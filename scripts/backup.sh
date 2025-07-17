@@ -84,10 +84,16 @@ preflight_checks() {
         fi
     done
     
-    # Check available disk space (require at least 10GB free)
+    # Check available disk space (require at least 2GB free)
     local available_space=$(df "${BACKUP_ROOT}" | awk 'NR==2 {print $4}')
-    if [ "$available_space" -lt 10485760 ]; then  # 10GB in KB
-        error_exit "Insufficient disk space. At least 10GB required."
+    local available_gb=$((available_space / 1048576))
+    
+    if [ "$available_space" -lt 2097152 ]; then  # 2GB in KB
+        error_exit "Insufficient disk space. At least 2GB required. Available: ${available_gb}GB"
+    elif [ "$available_space" -lt 5242880 ]; then  # 5GB in KB
+        log "WARNING" "Low disk space warning. Available: ${available_gb}GB. Consider freeing up space."
+    else
+        log "INFO" "Available disk space: ${available_gb}GB"
     fi
     
     log "SUCCESS" "Pre-flight checks completed"
