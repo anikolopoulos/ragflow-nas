@@ -1,0 +1,42 @@
+ragflow:
+  host: 0.0.0.0
+  http_port: 9380
+
+minio:
+  user: "minioadmin"
+  password: "your_minio_password"
+  host: "minio:9000"
+
+redis:
+  db: 1
+  password: "your_redis_password"
+  host: "redis:6379"
+
+mysql:
+  name: "ai_lab_ragflow"
+  user: "ai_lab_ragflow_admin"
+  db_pass: "your_mysql_password"
+  host: "mysql"
+  port: 3306
+  max_connections: 100
+  stale_timeout: 30
+
+es:
+  hosts: "http://elasticsearch:9200"
+
+embedding:
+  default_model: "e5-large-v2"
+
+embedding_service:
+  type: external
+  endpoint: "http://10.0.0.190:8030/embeddings"
+  model_name: "e5-large-v2"
+  timeout: 30
+  max_retries: 3
+
+user_default_embedding:
+  - factory: "External"
+    base_url: "http://10.0.0.190:8030"
+    api_key: "dummy_key"
+    models:
+      - "e5-large-v2"
