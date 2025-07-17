@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ragflow": {
+      "transport": "sse",
+      "url": "http://ragflow.leadetic.com:9382/sse",
+      "headers": {
+        "Authorization": "Bearer ragflow-UwYTZlZDI0NTc4NTExZjA4YWYyMDI0Mm"
+      }
+    }
+  }
+}

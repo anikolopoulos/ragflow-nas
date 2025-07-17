@@ -1,0 +1,107 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Data directories
+mysql/
+elasticsearch/
+minio/
+redis/
+data/
+
+# Log files
+*.log
+logs/
+*.log.*
+*_access.log
+*_error.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Backup files
+*.bak
+*.backup
+*.old
+backups/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Node modules (for MCP bridge)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Sensitive files
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Large files
+*.tar
+*.tar.gz
+*.zip
+*.rar
+*.7z
+*.dmg
+*.iso
+
+# MinIO specific
+.minio.sys/
+
+# Elasticsearch specific
+elasticsearch.keystore
+
+# NPM/Nginx Proxy Manager
+fallback_*.log
+proxy-host-*_*.log
+
+# Generated files
+4.conf
+
+# OS files
+Thumbs.db
+.Spotlight-V100
+.Trashes
+
+# QNAP specific
+@Recycle/
+.@__thumb/
+.qpkg/
+
+# Ignore specific configuration that may contain secrets
+nginx-ragflow.conf/
+
+# But track example/template files
+!*.example
+!*.template

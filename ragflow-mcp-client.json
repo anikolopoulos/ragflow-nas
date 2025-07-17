@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ragflow": {
+      "transport": "sse",
+      "url": "http://ragflow.leadetic.com:9380/sse",
+      "headers": {
+        "api_key": "ragflow-UwYTZlZDI0NTc4NTExZjA4YWYyMDI0Mm"
+      }
+    }
+  }
+}

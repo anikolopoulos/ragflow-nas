@@ -1,0 +1,4 @@
+FROM infiniflow/ragflow:${RAGFLOW_VERSION:-latest}
+
+# Copy custom configuration
+COPY service_conf.yaml /ragflow/conf/service_conf.yaml

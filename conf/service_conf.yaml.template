@@ -1,0 +1,44 @@
+ragflow:
+  host: 0.0.0.0
+  http_port: 9380
+
+minio:
+  user: '${MINIO_ROOT_USER}'
+  password: '${MINIO_ROOT_PASSWORD}'
+  host: 'minio:9000'
+
+redis:
+  db: 1
+  password: '${REDIS_PASSWORD}'
+  host: 'redis:6379'
+
+mysql:
+  name: '${MYSQL_DATABASE:-ai_lab_ragflow}'
+  user: '${MYSQL_USER:-ai_lab_ragflow_admin}'
+  password: '${MYSQL_PASSWORD:-AVNS_P6fdU2YcGmxQBsG9fNH}'
+  host: '${MYSQL_HOST:-mysql}'
+  port: ${MYSQL_PORT:-3306}
+  max_connections: 100
+  stale_timeout: 30
+
+es:
+  hosts: 'http://elasticsearch:9200'
+
+embedding:
+  default_model: "e5-large-v2"
+
+# External embedding service configuration
+embedding_service:
+  type: "external"
+  endpoint: "http://10.0.0.190:8030/embeddings"
+  model_name: "e5-large-v2"
+  timeout: 30
+  max_retries: 3
+
+# User default embedding configuration
+user_default_embedding:
+  - factory: "External"
+    base_url: "http://10.0.0.190:8030"
+    api_key: "dummy_key"  # Not needed for your setup, but required field
+    models:
+      - "e5-large-v2"

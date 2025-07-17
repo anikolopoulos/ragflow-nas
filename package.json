@@ -1,0 +1,17 @@
+{
+  "name": "ragflow",
+  "version": "1.0.0",
+  "description": "RAGFlow is a Retrieval-Augmented Generation (RAG) system that provides intelligent document processing and question-answering capabilities. This deployment includes integration with the Model Context Protocol (MCP) for enhanced AI interactions.",
+  "main": "ragflow-mcp-wrapper.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.15.1",
+    "node-fetch": "^2.7.0"
+  }
+}
