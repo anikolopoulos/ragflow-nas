@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-RAGFlow is a containerized Retrieval-Augmented Generation (RAG) system deployed using Docker Compose. This is a deployment configuration repository, not the RAGFlow source code itself.
+RAGFlow is a containerized Retrieval-Augmented Generation (RAG) system deployed using Docker Compose. This is a deployment configuration repository, not the RAGFlow source code itself. The system provides document management, AI-powered Q&A, and MCP integration for Claude Desktop.
 
 ## Deployment Environment
 
@@ -48,21 +48,24 @@ docker compose down -v
 docker compose ps
 
 # Execute commands in containers
-docker exec -it ragflow-server bash
-docker exec -it ragflow-mysql mysql -u root -p
+docker exec -it ragflow-nas bash  # Main container
+docker exec -it ragflow-mysql mysql -u root -p$MYSQL_ROOT_PASSWORD  # MySQL
 
 # View real-time logs
 docker compose logs -f --tail=100
 
-# Test MCP bridge connectivity
-curl -X POST http://localhost:9380/mcp/tools -H "Authorization: Bearer YOUR_API_KEY"
+# Monitor resource usage
+docker stats
+
+# Health check
+curl http://localhost:9380/api/health
 ```
 
 ### Testing MCP Integration
 
 ```bash
-# Start MCP bridge logs monitoring
-docker compose logs -f ragflow
+# Test MCP bridge connectivity
+curl -X POST http://localhost:9380/mcp/tools -H "Authorization: Bearer YOUR_API_KEY"
 
 # Test tool listing
 curl -X POST http://localhost:9380/mcp/tools \
@@ -70,6 +73,22 @@ curl -X POST http://localhost:9380/mcp/tools \
   -H "Content-Type: application/json"
 
 # Test tool execution (see docs/MCP_BRIDGE_TECHNICAL.md for examples)
+```
+
+### Backup and Restore
+
+```bash
+# Run comprehensive backup
+./scripts/backup.sh
+
+# Verify backup integrity
+./scripts/verify_backup.sh /path/to/backup
+
+# Restore from backup
+./scripts/restore.sh /path/to/backup
+
+# Setup automated backups
+./scripts/setup_backup_cron.sh
 ```
 
 ## Architecture and Key Components
@@ -86,19 +105,23 @@ The system consists of these Docker services:
 
 ### MCP Bridge Architecture
 
-The MCP (Model Context Protocol) bridge (`mcp-bridge.js`) enables Claude Desktop integration:
+The MCP (Model Context Protocol) bridge enables Claude Desktop integration:
 
+- **Main Script**: `ragflow-mcp-wrapper.js` - Node.js bridge between MCP and RAGFlow API
+- **Entry Point**: `entrypoint-wrapper.sh` - Custom startup script that launches nginx and MCP server
+- **Port**: 9382 (MCP server listens on stdio transport)
 - Converts between MCP protocol and RAGFlow REST API
-- Handles SSE (Server-Sent Events) for real-time communication
+- Implements `search_docs` tool for document retrieval
 - Manages authentication and request routing
-- Implements retry logic and error handling
 
 ### Key Configuration Files
 
 - `docker-compose.yml`: Service definitions and orchestration
 - `.env`: Environment variables (API keys, ports, resource limits)
 - `conf/service_conf.yaml`: RAGFlow application configuration
+- `nginx-ragflow-fixed.conf`: Custom nginx configuration
 - `package.json`: Node.js dependencies for MCP bridge
+- `entrypoint-wrapper.sh`: Custom startup script
 
 ### API Authentication
 
@@ -144,6 +167,18 @@ Authorization: Bearer YOUR_RAGFLOW_API_KEY
 - MinIO objects: `./minio/`
 - Application logs: `./logs/`
 - Temporary files: `./tmp/`
+- Backup files: `/share/docker/backups/ragflow/`
+
+## File Permissions Note
+
+When editing files from macOS via network share, files may need proper permissions on the NAS. Use SSH to fix permissions if containers fail to read modified files:
+
+```bash
+ssh admin@10.0.0.10
+cd /share/docker/ragflow
+chmod 644 filename  # For config files
+chmod 755 script.sh # For executable scripts
+```
 
 ## Nginx Proxy Manager (NPM) Configuration
 
