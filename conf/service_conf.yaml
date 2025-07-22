@@ -3,40 +3,90 @@ ragflow:
   http_port: 9380
 
 minio:
-  user: "minioadmin"
-  password: "your_minio_password"
-  host: "minio:9000"
+  user: '${MINIO_ROOT_USER}'
+  password: '${MINIO_ROOT_PASSWORD}'
+  host: 'minio:9000'
 
 redis:
   db: 1
-  password: "your_redis_password"
-  host: "redis:6379"
+  password: '${REDIS_PASSWORD}'
+  host: 'redis:6379'
 
 mysql:
-  name: "ai_lab_ragflow"
-  user: "ai_lab_ragflow_admin"
-  db_pass: "your_mysql_password"
-  host: "mysql"
-  port: 3306
+  name: '${MYSQL_DATABASE:-ai_lab_ragflow}'
+  user: '${MYSQL_USER:-ai_lab_ragflow_admin}'
+  password: '${MYSQL_PASSWORD:-AVNS_P6fdU2YcGmxQBsG9fNH}'
+  host: '${MYSQL_HOST:-mysql}'
+  port: ${MYSQL_PORT:-3306}
   max_connections: 100
   stale_timeout: 30
 
 es:
-  hosts: "http://elasticsearch:9200"
+  hosts: 'http://elasticsearch:9200'
 
 embedding:
   default_model: "e5-large-v2"
 
+embedding_mdl: "text-embedding-3-small"
+
+# External embedding service configuration
 embedding_service:
-  type: external
-  endpoint: "http://10.0.0.190:8030/embeddings"
+  type: "external"
+  endpoint: "http://10.0.0.132:8030/embeddings"
   model_name: "e5-large-v2"
   timeout: 30
   max_retries: 3
 
+# LLM configuration for system defaults
+llm:
+  default_models:
+    chat_model: "gpt-4o-mini"
+    embedding_model: "text-embedding-3-small"
+    rerank_model: ""
+    asr_model: "whisper-1"
+    image2text_model: ""
+
+# User default model configurations
+user_default_llm:
+  factory: "OpenAI"
+  base_url: "https://litellm.leadetic.com"
+  api_key: "${LITELLM_API_KEY:-sk-1wZ_nQBilMMv5BM93NiPbA}"
+  default_models:
+    chat_model: "gpt-4o-mini"
+    embedding_model: "text-embedding-3-small"
+    rerank_model: ""
+    asr_model: "whisper-1"
+    image2text_model: ""
+
 user_default_embedding:
-  - factory: "External"
-    base_url: "http://10.0.0.190:8030"
-    api_key: "dummy_key"
+  - factory: "OpenAI"
+    base_url: "https://litellm.leadetic.com"
+    api_key: "${LITELLM_API_KEY:-sk-1wZ_nQBilMMv5BM93NiPbA}"
     models:
-      - "e5-large-v2"
+      - "text-embedding-3-large"
+      - "text-embedding-3-small"
+      - "text-embedding-ada-002"
+  - factory: "OpenAI-API-Compatible"
+    base_url: "http://10.0.0.132:8030/v1"
+    api_key: ""
+    models:
+      - "BAAI/bge-reranker-v2-m3___OpenAI-API"
+  - factory: "OpenAI-API-Compatible"
+    base_url: "http://10.0.0.190:8030/embeddings"
+    api_key: ""
+    models:
+      - "e5-large-v2___OpenAI-API"
+
+user_default_speech2text:
+  - factory: "OpenAI"
+    base_url: "https://litellm.leadetic.com"
+    api_key: "${LITELLM_API_KEY:-sk-1wZ_nQBilMMv5BM93NiPbA}"
+    models:
+      - "whisper-1"
+
+user_default_tts:
+  - factory: "OpenAI"
+    base_url: "https://litellm.leadetic.com"
+    api_key: "${LITELLM_API_KEY:-sk-1wZ_nQBilMMv5BM93NiPbA}"
+    models:
+      - "tts-1"
