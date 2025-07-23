@@ -17,6 +17,130 @@ RAGFlow is a containerized Retrieval-Augmented Generation (RAG) system deployed 
   - **Public URL**: https://ragflow.leadetic.com:8443
   - **NAS IP**: 10.0.0.10
 
+## Network Topology
+
+### External Access Configuration
+- **Public Domain**: ragflow.leadetic.com
+- **External Port**: 8443 (ISP blocks standard ports 80/443)
+- **Traffic Flow**: 
+  1. Internet → ragflow.leadetic.com:8443
+  2. Router port forward → NPM on 10.0.0.10:8443
+  3. NPM proxy → ragflow-nas container:80
+- **SSL Termination**: Handled by NPM with Let's Encrypt certificates
+
+### DDNS Configuration
+- **Purpose**: Updates DigitalOcean DNS A record with current public IP
+- **Script**: `/share/docker/ragflow/digitalocean-ddns-update.sh`
+- **Schedule**: Runs every 5 minutes via cron
+- **Log**: `/share/docker/ragflow/digitalocean-ddns.log`
+
+#### DDNS Script Details
+The DDNS update script (`ddns-update.sh`) performs the following:
+1. Gets current public IP from multiple sources (ipify.org as primary)
+2. Updates two DNS A records in DigitalOcean:
+   - `ragflow.leadetic.com` (record ID: 1784898345)
+   - `ragflowmcp.leadetic.com` (record ID: 1785218694)
+3. Requires `DO_API_TOKEN` environment variable from `.ddns.env` file
+4. Logs all operations to `digitalocean-ddns.log`
+
+#### Crontab Configuration
+QNAP may remove custom crontab entries on restart. To restore DDNS updates:
+
+1. **Check if cron entry exists:**
+   ```bash
+   sudo grep ddns /etc/config/crontab
+   ```
+
+2. **If missing, add this line to `/etc/config/crontab`:**
+   ```bash
+   */5 * * * * source /share/docker/ragflow/.ddns.env && /share/docker/ragflow/ddns-update.sh >/dev/null 2>&1
+   ```
+
+3. **Edit crontab:**
+   ```bash
+   sudo vi /etc/config/crontab
+   # Add the line above
+   # Save with :wq
+   ```
+
+4. **Restart cron service:**
+   ```bash
+   sudo killall crond
+   sudo /usr/sbin/crond -c /etc/config/crontab
+   ```
+
+5. **Verify API token exists:**
+   ```bash
+   cat /share/docker/ragflow/.ddns.env
+   # Should contain: DO_API_TOKEN="your_token_here"
+   ```
+
+### Domain Configuration
+
+#### External Access Setup
+- **Public domains**: 
+  - `ragflow.leadetic.com:8443` - Main RAGFlow interface
+  - `ragflowmcp.leadetic.com:9382` - MCP service endpoint
+- **Router configuration**:
+  - External port 8443 → Internal 10.0.0.10:8443 (NPM)
+  - External port 9382 → Internal 10.0.0.10:9382 (MCP)
+- **NPM (Nginx Proxy Manager)**:
+  - Listens on port 8443 for HTTPS traffic
+  - Proxies ragflow.leadetic.com → ragflow-nas container port 80
+  - SSL termination with Let's Encrypt certificates
+
+#### Fixing Domain Access Issues
+
+1. **If domains stop working, check in order:**
+   
+   a. **DNS Resolution:**
+   ```bash
+   dig +short ragflow.leadetic.com
+   # Should return your current public IP
+   ```
+   
+   b. **DDNS Updates:**
+   ```bash
+   tail -20 /share/docker/ragflow/digitalocean-ddns.log
+   # Check for recent successful updates
+   ```
+   
+   c. **NPM Port Configuration:**
+   ```bash
+   docker ps | grep npm
+   docker port npm
+   # Should show: 443/tcp -> 0.0.0.0:8443
+   ```
+   
+   d. **NPM Container:**
+   ```bash
+   # If port 8443 is missing, edit /share/docker/npm/docker-compose.yml
+   # Ensure this line is uncommented:
+   # - "8443:443"    # Alternative HTTPS port
+   
+   # Then recreate container:
+   cd /share/docker/npm
+   docker compose down
+   docker compose up -d
+   ```
+
+2. **Manual DNS Update (if DDNS fails):**
+   ```bash
+   source /share/docker/ragflow/.ddns.env
+   export DO_API_TOKEN
+   /share/docker/ragflow/ddns-update.sh
+   ```
+
+3. **Test connectivity:**
+   ```bash
+   # From NAS:
+   curl -k https://10.0.0.10:8443
+   curl -k -H "Host: ragflow.leadetic.com" https://10.0.0.10:8443
+   
+   # From outside:
+   curl -k https://ragflow.leadetic.com:8443/api/health
+   ```
+
 ## Common Development Commands
 
 ### Service Management
