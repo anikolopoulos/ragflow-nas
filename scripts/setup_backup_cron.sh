@@ -74,7 +74,7 @@ check_prerequisites() {
 setup_backup_directories() {
     log "INFO" "Setting up backup directory structure..."
     
-    local backup_root="/share/backups/ragflow"
+    local backup_root="/share/docker/backups/ragflow"
     local dirs=(
         "${backup_root}/daily"
         "${backup_root}/weekly"
@@ -115,16 +115,16 @@ generate_cron_jobs() {
 # Make sure to adjust paths and times according to your needs
 
 # Daily backup at 2:00 AM
-0 2 * * * ${BACKUP_SCRIPT} >> /share/backups/ragflow/logs/cron.log 2>&1
+0 2 * * * ${BACKUP_SCRIPT} >> /share/docker/backups/ragflow/logs/cron.log 2>&1
 
 # Daily backup verification at 3:00 AM
-0 3 * * * ${VERIFY_SCRIPT} --quick >> /share/backups/ragflow/logs/cron.log 2>&1
+0 3 * * * ${VERIFY_SCRIPT} --quick >> /share/docker/backups/ragflow/logs/cron.log 2>&1
 
 # Weekly detailed verification and report on Sundays at 4:00 AM
-0 4 * * 0 ${VERIFY_SCRIPT} --all --report >> /share/backups/ragflow/logs/cron.log 2>&1
+0 4 * * 0 ${VERIFY_SCRIPT} --all --report >> /share/docker/backups/ragflow/logs/cron.log 2>&1
 
 # Monthly cleanup and maintenance on 1st day at 5:00 AM
-0 5 1 * * find /share/backups/ragflow/logs -name "*.log" -mtime +90 -delete >> /share/backups/ragflow/logs/cron.log 2>&1
+0 5 1 * * find /share/docker/backups/ragflow/logs -name "*.log" -mtime +90 -delete >> /share/docker/backups/ragflow/logs/cron.log 2>&1
 
 EOF
     

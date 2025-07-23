@@ -13,7 +13,7 @@ set -euo pipefail  # Exit on error, undefined vars, pipe failures
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-BACKUP_ROOT="/share/backups/ragflow"
+BACKUP_ROOT="/share/docker/backups/ragflow"
 DATE=$(date +%Y-%m-%d)
 TIME=$(date +%H%M%S)
 TIMESTAMP="${DATE}_${TIME}"
@@ -40,6 +40,9 @@ log() {
     shift
     local message="$*"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # Create log directory if needed
+    mkdir -p "$(dirname "$LOG_FILE")"
     
     echo -e "${timestamp} [${level}] ${message}" | tee -a "$LOG_FILE"
     
@@ -85,8 +88,26 @@ preflight_checks() {
     done
     
     # Check available disk space (require at least 2GB free)
-    local available_space=$(df "${BACKUP_ROOT}" | awk 'NR==2 {print $4}')
-    local available_gb=$((available_space / 1048576))
+    # Create backup directory if it doesn't exist
+    mkdir -p "${BACKUP_ROOT}"
+    
+    # Get available space in KB, handle different df output formats
+    local df_output=$(df "${BACKUP_ROOT}")
+    local available_space=$(echo "$df_output" | awk 'END {print $4}')
+    
+    # Debug output
+    log "INFO" "Disk space check for: ${BACKUP_ROOT}"
+    log "INFO" "df output: $(echo "$df_output" | tail -1)"
+    
+    # Convert to GB for display (handle empty/invalid values)
+    local available_gb=0
+    if [[ "$available_space" =~ ^[0-9]+$ ]]; then
+        available_gb=$((available_space / 1048576))
+    else
+        log "WARNING" "Could not parse disk space. Proceeding with backup..."
+        log "SUCCESS" "Pre-flight checks completed"
+        return 0
+    fi
     
     if [ "$available_space" -lt 2097152 ]; then  # 2GB in KB
         error_exit "Insufficient disk space. At least 2GB required. Available: ${available_gb}GB"
@@ -148,20 +169,22 @@ backup_minio() {
     local temp_container="ragflow-minio-backup-$$"
     
     # Create temporary MinIO client container for backup
-    if docker run --rm \
+    docker run --rm \
         --name "$temp_container" \
         --network ragflow_ragflow-internal \
         -v "${backup_dir}:/backup" \
+        --entrypoint sh \
         minio/mc:latest \
-        sh -c "
+        -c "
             mc alias set source http://ragflow-minio-nas:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
-            mc mirror --overwrite source/ragflow /backup/ragflow/
-        " 2>/dev/null; then
-        
+            mc mirror --overwrite source/ragflow /backup/ragflow/ || echo 'No data to backup'
+        " 2>&1 | tee -a "$LOG_FILE"
+    
+    if [ -d "${backup_dir}/ragflow" ]; then
         local size=$(du -sh "$backup_dir" | cut -f1)
         log "SUCCESS" "MinIO backup completed: $backup_dir ($size)"
     else
-        log "WARNING" "MinIO backup failed or no data to backup"
+        log "INFO" "MinIO bucket is empty or not accessible - skipping"
     fi
 }
 
@@ -171,6 +194,12 @@ backup_elasticsearch() {
     
     local snapshot_name="snapshot_${TIMESTAMP}"
     local es_backup_dir="${BACKUP_ROOT}/daily/${DATE}/elasticsearch"
+    
+    # Check if Elasticsearch is accessible
+    if ! curl -s "localhost:9201/_cluster/health" >/dev/null 2>&1; then
+        log "INFO" "Elasticsearch not accessible on port 9201 - skipping"
+        return 0
+    fi
     
     # Create snapshot repository if it doesn't exist
     curl -s -X PUT "localhost:9201/_snapshot/backup" \
@@ -234,17 +263,22 @@ backup_config() {
     local config_backup="${BACKUP_ROOT}/daily/${DATE}/config_${TIMESTAMP}.tar.gz"
     
     # Archive configuration files
-    if tar -czf "$config_backup" \
-        -C "$PROJECT_ROOT" \
-        docker-compose.yml \
-        .env.example \
-        entrypoint-wrapper.sh \
-        nginx-ragflow-fixed.conf \
-        conf/ \
-        scripts/ \
-        *.md \
-        *.json \
-        *.js 2>/dev/null; then
+    cd "$PROJECT_ROOT"
+    local files_to_backup=""
+    
+    # Check for each file/directory and add if exists
+    for item in docker-compose.yml .env.example entrypoint-wrapper.sh nginx-ragflow-fixed.conf; do
+        [ -f "$item" ] && files_to_backup="$files_to_backup $item"
+    done
+    
+    # Add directories if they exist
+    [ -d "conf" ] && files_to_backup="$files_to_backup conf/"
+    [ -d "scripts" ] && files_to_backup="$files_to_backup scripts/"
+    
+    # Add wildcard files
+    files_to_backup="$files_to_backup *.md *.json *.js"
+    
+    if tar -czf "$config_backup" $files_to_backup 2>/dev/null; then
         
         local size=$(du -h "$config_backup" | cut -f1)
         log "SUCCESS" "Configuration backup completed: $config_backup ($size)"

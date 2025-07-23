@@ -241,3 +241,58 @@ proxy_send_timeout 300s;
 - NPM generates duplicate `proxy_pass` directives when custom locations have advanced config (known bug)
 - If NPM fails to start after SSL changes, manually edit `/data/nginx/proxy_host/4.conf` to remove duplicate `proxy_pass` lines
 - Let's Encrypt rate limit: 5 certificates per domain per week
+
+## Lessons Learned from Configuration Issues
+
+### Model Configuration in RAGFlow v0.19.1
+
+1. **Required Model Variables**: RAGFlow v0.19.1 requires these model configuration keys in `service_conf.yaml.template`:
+   - `chat_mdl`
+   - `embedding_mdl`
+   - `rerank_mdl`
+   - `asr_mdl`
+   - `image2text_mdl`
+
+2. **Empty String Handling**: Never use empty strings (`""`) for model values in the template. The template processor strips quotes, causing YAML to interpret them as `None`, which leads to TypeError. Always provide actual model names.
+
+3. **Factory Name Detection**: RAGFlow extracts factory names from model names:
+   - Models containing "BAAI" → BAAI factory
+   - Models containing "e5" → Youdao factory
+   - The `factory` field in configuration is largely ignored for display purposes
+
+4. **Model Name Format**: When specifying models:
+   - For OpenAI models via LiteLLM: `"model-name@OpenAI"`
+   - For local models: Use the actual model name without special suffixes
+   - The `___OpenAI-API` suffix doesn't work as expected
+
+### Configuration Best Practices
+
+1. **Template Processing**: Let RAGFlow's entrypoint process the template. Don't mount a static `service_conf.yaml` as it causes conflicts.
+
+2. **Environment Variables**: Ensure all required variables are set in `.env`:
+   - Database credentials
+   - Service passwords
+   - API keys
+
+3. **Model Selection**: Even if models appear under wrong factories in the UI, they'll use the correct endpoints specified in `base_url`.
+
+### Troubleshooting Tips
+
+1. **TypeError: 'NoneType' is not iterable**: This means a model configuration value is None. Check that all `*_mdl` keys have non-empty values.
+
+2. **Container Restart Loop**: Check for:
+   - File permission issues with mounted volumes
+   - Conflicts between mounted files and entrypoint expectations
+   - nginx PID file errors
+
+3. **502 Bad Gateway**: Usually means the RAGFlow server process isn't running. Check logs for Python exceptions.
+
+### Current Working Configuration
+
+The system is now configured with:
+- Chat models via OpenAI/LiteLLM
+- Local embedding service at 10.0.0.132:8030
+- Local reranking service at 10.0.0.132:8030
+- All required model variables properly set
+
+Even though some models appear under BAAI/Youdao factories in the UI, they correctly use the configured OpenAI-API-Compatible endpoints.
